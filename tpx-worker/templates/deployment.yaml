@@ -1,0 +1,99 @@
+{{- $fullName := include "tpx-worker.fullname" . -}}
+{{- $serviceEnvironment := .Values.global.environments.environmentName -}}
+{{- $serviceNamespace := .Values.global.environments.namespace -}}
+{{- $DockerUserId := .Values.service.dockerUserId -}}
+{{- $DockerImage := .Values.service.DockerImageName -}}
+{{- $serviceDomain := .Values.service.domainName -}}
+{{- $serviceVpc := .Values.global.environments.vpc -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ $serviceNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}
+    helm.sh/chart: {{ $fullName }}
+    app.kubernetes.io/instance: deployment-{{ $fullName }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  {{- if eq .Values.global.environments.environmentName "prod" }}
+  replicas: {{ .Values.replicaCountProd }}
+  {{- else if eq .Values.global.environments.environmentName "staging" }}
+  replicas: {{ .Values.replicaCountStaging }}
+  {{ else }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 10
+  strategy:
+   rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+   type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $fullName }}
+      app.kubernetes.io/instance: deployment-{{ $fullName }}
+      app.gosomecompanygo.com/aws-region: {{ .Values.global.environments.awsRegion }}
+  template:
+    metadata:
+      annotations:
+        sumologic.com/sourceCategory: "{{ $serviceEnvironment }}/{{ $fullName }}/{{ $fullName }}-app"
+        sumologic.com/sourceCategoryPrefix: ""
+        sumologic.com/sourceCategoryReplaceDash: "-"
+      labels:
+        app.kubernetes.io/name: {{ $fullName }}
+        app.kubernetes.io/instance: deployment-{{ $fullName }}
+        app.gosomecompanygo.com/aws-region: {{ .Values.global.environments.awsRegion }}
+        app.gosomecompanygo.com/environment: {{ $serviceEnvironment }}
+        app.gosomecompanygo.com/stackowner: {{ .Values.StackOwner }}
+        deployed-date: "{{ now | unixEpoch }}"
+    spec:
+      serviceAccountName: somecompanyeksservice{{ $serviceVpc }}tpx-worker-app
+      securityContext:
+        fsGroup: {{ $DockerUserId }}
+      containers:
+        - name: {{ $fullName }}
+          image: "{{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: AWS_REGION
+            value: {{ .Values.global.environments.awsRegion }}
+          - name: ENVIRONMENT
+            value: {{ $serviceEnvironment }}
+          - name: DOMAIN_NAME
+            value: {{ $serviceDomain }}
+          - name: DD_AGENT_HOST
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: TPX_STATS_ADDRESS
+            value: $(DD_AGENT_HOST):8125
+          - name: VPC
+            value: {{ $serviceVpc }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: {{ $DockerUserId }}
+          stdin: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          tty: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

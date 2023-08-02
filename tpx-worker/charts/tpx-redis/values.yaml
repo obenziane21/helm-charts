@@ -1,0 +1,65 @@
+# Default values for tpx-redis.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+StackOwner: jenkins
+
+replicaCount: 1
+
+image:
+  repository: k8s.gcr.io/redis
+  tag: prod
+  pullPolicy: Always
+
+nameOverride: "tpx-redis"
+fullnameOverride: "tpx-redis"
+
+service:
+  enabled: true
+  paths: []
+  type: NodePort
+  # Pick your container port you have developped for your app
+  port: 6379
+
+containers:
+  protocolType: TCP
+
+ingress:
+  enabled: true
+  domainName: somecompany.engineering
+  URLName: accounts
+  type: ClusterIP
+  annotations: { kubernetes.io/ingress.class: nginx }
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  paths: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  requests:
+    cpu: 5m
+    memory: 5Mi
+
+nodeSelector:
+  role: worker
+
+tolerations:
+  - key: "node.kubernetes.io/unreachable"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 6000
+  - key: "node.kubernetes.io/not-ready"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+affinity: {}

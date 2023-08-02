@@ -1,0 +1,369 @@
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPUUtilizationPercentage: 80
+#affinity:
+#  podAntiAffinity:
+#    requiredDuringSchedulingIgnoredDuringExecution:
+#      - labelSelector:
+#          matchLabels:
+#            app.kubernetes.io/instance: netbox
+#            app.kubernetes.io/name: netbox
+#            app.kubernetes.io/component: netbox
+#        topologyKey: kubernetes.io/hostname
+resources:
+  limits:
+    cpu: 2
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+existingSecret: ${ secret_name }
+annotations:
+    eks.amazonaws.com/role-arn: ${ role_arn }
+
+storageBackend: storages.backends.s3boto3.S3Boto3Storage
+storageConfig:
+  AWS_STORAGE_BUCKET_NAME: '${ storage_bucket }'
+  AWS_S3_REGION_NAME: 'us-east-1'
+
+# Temporarily disable this
+persistence:
+  enabled: false
+reportsPersistence:
+  enabled: false
+
+postgresql:
+    enabled: false
+externalDatabase:
+  host: ${ rds_host }
+  port: ${ rds_port }
+  database: ${ rds_database }
+  username: ${ rds_username}
+  sslMode: prefer
+  connMaxAge: 300
+  disableServerSideCursors: false
+
+redis:
+    enabled: false
+tasksRedis:
+  database: 0
+  ssl: true
+  insecureSkipTlsVerify: false
+
+  # Used only when redis.enabled is false. host and port are not used if
+  # sentinels are given.
+  host: ${ redis_host }
+  port: ${ redis_port }
+cachingRedis:
+  database: 1
+  ssl: true
+  insecureSkipTlsVerify: false
+
+  # Used only when redis.enabled is false. host and port are not used if
+  # sentinels are given.
+  host: ${ redis_host }
+  port: ${ redis_port }
+
+serviceAccount:
+  create: false
+  name: ${ service_account_name }
+
+image:
+  repository: netboxcommunity/netbox
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+
+# You can also use an existing secret for the superuser password and API token
+# See `existingSecret` for details
+superuser:
+  name: admin
+  email: ops+netbox@somecompany.com
+
+skipStartupScripts: true
+allowedHosts:
+  - 'netbox.somecompany.tools'
+admins: []
+authPasswordValidators: []
+
+# URL schemes that are allowed within links in NetBox
+allowedUrlSchemes: [file, ftp, ftps, http, https, irc, mailto, sftp, ssh, tel,
+                    telnet, tftp, vnc, xmpp]
+banner:
+  # Optionally display a persistent banner at the top and/or bottom of every
+  # page. HTML is allowed.
+  top: ''
+  bottom: ''
+  # Text to include on the login page above the login form. HTML is allowed.
+  login: ''
+
+# Base URL path if accessing NetBox within a directory. For example, if
+# installed at http://example.com/netbox/, set to 'netbox/'. If using
+# Kubernetes Ingress, make sure you set ingress.hosts[].paths[] appropriately.
+basePath: ''
+
+# Maximum number of days to retain logged changes. Set to 0 to retain change
+# logs indefinitely. (Default: 90)
+changelogRetention: 90
+
+# This is a mapping of models to custom validators that have been defined
+# locally to enforce custom validation logic.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#custom_validators
+customValidators: {}
+
+# This is a dictionary defining the default preferences to be set for newly-
+# created user accounts.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#default_user_preferences
+defaultUserPreferences: {}
+  # pagination:
+  #   per_page: 100
+
+# API Cross-Origin Resource Sharing (CORS) settings. If originAllowAll
+# is set to true, all origins will be allowed. Otherwise, define a list of
+# allowed origins using either originWhitelist or originRegexWhitelist. For
+# more information, see https://github.com/ottoyiu/django-cors-headers
+cors:
+  originAllowAll: false
+  originWhitelist: []
+  originRegexWhitelist: []
+  #  - '^(https?://)?(\w+\.)?example\.com$'
+
+# CSRF settings.  Needed for netbox v3.2.0 and newer. For more information
+# see https://docs.netbox.dev/en/stable/configuration/optional-settings/#csrf_trusted_origins
+csrf:
+  # The name of the cookie to use for the cross-site request forgery (CSRF)
+  # authentication token.
+  cookieName: csrftoken
+  # Defines a list of trusted origins for unsafe (e.g. POST) requests. This is
+  # a pass-through to Django's CSRF_TRUSTED_ORIGINS setting. Note that each
+  # host listed must specify a scheme (e.g. http:// or `https://).
+  trustedOrigins: []
+
+# Note: this is where the CUSTOM_VALIDATORS setting naturally fits in relation
+# to the upstream NetBox configuration, but the setting cannot be reflected in
+# YAML/JSON as it depends on creating instances of Python classes.
+# Set to True to enable server debugging. WARNING: Debugging introduces a
+# substantial performance penalty and may reveal sensitive information about
+# your installation. Only enable debugging while performing testing. Never
+# enable debugging on a production system.
+debug: false
+
+# Display full traceback of errors that occur when applying database
+# migrations.
+dbWaitDebug: false
+
+# Email settings
+email:
+  server: localhost
+  port: 25
+  username: ''
+  password: ''
+  useSSL: false
+  useTLS: false
+  sslCertFile: ''
+  sslKeyFile: ''
+  timeout: 10  # seconds
+  from: ''
+
+# Enforcement of unique IP space can be toggled on a per-VRF basis. To enforce
+# unique IP space within the global table (all prefixes and IP addresses not
+# assigned to a VRF), set enforceGlobalUnique to True.
+enforceGlobalUnique: false
+
+# Exempt certain models from the enforcement of view permissions. Models listed
+# here will be viewable by all users and by anonymous users. List models in the
+# form `<app>.<model>`. Add '*' to this list to exempt all models.
+exemptViewPermissions: []
+#  - dcim.site
+#  - dcim.region
+#  - ipam.prefix
+
+# Some static choice fields on models can be configured with custom values.
+# Each choice in the list must have a database value and a human-friendly
+# label, and may optionally specify a color.
+# https://docs.netbox.dev/en/stable/configuration/optional-settings/#field_choices
+fieldChoices: {}
+  # 'dcim.Site.status':
+  #   - [foo, Foo, red]
+  #   - [bar, Bar, green]
+  #   - [baz, Baz, blue]
+  # 'dcim.Site.status+':
+  #   ...
+
+# Enable the GraphQL API
+graphQlEnabled: true
+
+# HTTP proxies NetBox should use when sending outbound HTTP requests (e.g. for
+# webhooks).
+httpProxies: null
+  # http: http://10.10.1.10:3128
+  # https: http://10.10.1.10:1080
+
+# IP addresses recognized as internal to the system. The debugging toolbar will
+# be available only to clients accessing NetBox from an internal IP.
+internalIPs: ['127.0.0.1', '::1']
+
+# The number of days to retain job results (scripts and reports). Set this to 0
+# to retain job results in the database indefinitely.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#jobresult_retention
+jobResultRetention: 90
+
+# Enable custom logging. Please see the Django documentation for detailed
+# guidance on configuring custom logs:
+# https://docs.djangoproject.com/en/1.11/topics/logging/
+logging: {}
+
+# Automatically reset the lifetime of a valid session upon each authenticated
+# request. Enables users to remain authenticated to NetBox indefinitely.
+loginPersistence: false
+
+# Setting this to True will permit only authenticated users to access any part
+# of NetBox. By default, anonymous users are permitted to access most data in
+# NetBox but not make any changes.
+loginRequired: false
+
+# The length of time (in seconds) for which a user will remain logged into the
+# web UI before being prompted to re-authenticate.
+loginTimeout: 1209600  # 14 days
+
+# Setting this to True will display a "maintenance mode" banner at the top of
+# every page.
+maintenanceMode: false
+
+# The URL to use when mapping physical addresses or GPS coordinates
+mapsUrl: 'https://maps.google.com/?q='
+
+# An API consumer can request an arbitrary number of objects by appending the
+# "limit" parameter to the URL (e.g. "?limit=1000"). This setting defines the
+# maximum limit. Setting it to 0 or None will allow an API consumer to request
+# all objects by specifying "?limit=0".
+maxPageSize: 1000
+
+# By default uploaded media is stored in an attached volume. Using
+# Django-storages is also supported. Provide the class path of the storage
+# driver in storageBackend and any configuration options in storageConfig.
+# storageBackend: null  # storages.backends.s3boto3.S3Boto3Storage
+# storageBackend: storages.backends.s3boto3.S3Boto3Storage
+# storageConfig:
+#   AWS_ACCESS_KEY_ID: 'netbox'
+#   AWS_SECRET_ACCESS_KEY: 'netboxpassword'
+#   AWS_STORAGE_BUCKET_NAME: 'netbox'
+#   AWS_S3_ENDPOINT_URL: 'http://minio.home.arpa:9000'
+  # AWS_S3_REGION_NAME: 'eu-west-1'
+
+# Expose Prometheus monitoring metrics at the HTTP endpoint '/metrics'
+metricsEnabled: false
+napalm:
+  # Credentials that NetBox will use to access live devices.
+  username: ''
+  password: ''
+  # NAPALM timeout (in seconds). (Default: 30)
+  timeout: 30
+  # NAPALM optional arguments (see
+  # http://napalm.readthedocs.io/en/latest/support/#optional-arguments).
+  # Arguments must be provided as a dictionary.
+  args: {}
+
+# Determine how many objects to display per page within a list. (Default: 50)
+paginateCount: 50
+
+# Enable installed plugins. Add the name of each plugin to the list.
+plugins: []
+
+# Plugins configuration settings. These settings are used by various plugins
+# that the user may have installed. Each key in the dictionary is the name of
+# an installed plugin and its value is a dictionary of settings.
+pluginsConfig: {}
+
+# The default value for the amperage field when creating new power feeds.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#powerfeed_default_amperage
+powerFeedDefaultAmperage: 15
+
+# The default value (percentage) for the max_utilization field when creating
+# new power feeds.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#powerfeed_default_max_utilization
+powerFeedMaxUtilisation: 80
+
+# The default value for the voltage field when creating new power feeds.
+# https://docs.netbox.dev/en/stable/configuration/dynamic-settings/#powerfeed_default_voltage
+powerFeedDefaultVoltage: 120
+
+# When determining the primary IP address for a device, IPv6 is preferred over
+# IPv4 by default. Set this to True to prefer IPv4 instead.
+preferIPv4: false
+
+# Rack elevation size defaults, in pixels. For best results, the ratio of width
+# to height should be roughly 10:1.
+rackElevationDefaultUnitHeight: 22
+rackElevationDefaultUnitWidth: 220
+
+# Remote authentication support
+remoteAuth:
+  enabled: false
+  backend: netbox.authentication.RemoteUserBackend
+  header: HTTP_REMOTE_USER
+  autoCreateUser: true
+  defaultGroups: []
+  defaultPermissions: {}
+  groupSyncEnabled: false
+  groupHeader: HTTP_REMOTE_USER_GROUP
+  superuserGroups: []
+  superusers: []
+  staffGroups: []
+  staffUsers: []
+  groupSeparator: '|'
+
+  # The following options are specific for backend "netbox.authentication.LDAPBackend"
+  # you can use an existing netbox secret with "ldap_bind_password" instead of "bindPassword"
+  # see https://django-auth-ldap.readthedocs.io
+  #
+  # When enabling LDAP support please see "Using LDAP Authentication" in README.md and
+  # uncomment ALL of the configuration settings below, or your configuration will be invalid.
+  #
+  # ldap:
+  #   serverUri: 'ldap://domain.com'
+  #   startTls: true
+  #   ignoreCertErrors: false
+  #   bindDn: 'CN=Netbox,OU=EmbeddedDevices,OU=MyCompany,DC=domain,dc=com'
+  #   bindPassword: 'TopSecretPassword'
+  #   userDnTemplate: null
+  #   userSearchBaseDn: 'OU=Users,OU=MyCompany,DC=domain,dc=com'
+  #   userSearchAttr: 'sAMAccountName'
+  #   groupSearchBaseDn: 'OU=Groups,OU=MyCompany,DC=domain,dc=com'
+  #   groupSearchClass: 'group'
+  #   groupType: 'GroupOfNamesType'
+  #   requireGroupDn: ''
+  #   findGroupPerms: true
+  #   mirrorGroups: true
+  #   mirrorGroupsExcept: null
+  #   cacheTimeout: 3600
+  #   isAdminDn: 'CN=Network Configuration Operators,CN=Builtin,DC=domain,dc=com'
+  #   isSuperUserDn: 'CN=Domain Admins,CN=Users,DC=domain,dc=com'
+  #   attrFirstName: 'givenName'
+  #   attrLastName: 'sn'
+  #   attrMail: 'mail'
+
+releaseCheck:
+  # This repository is used to check whether there is a new release of NetBox
+  # available. Set to null to disable the version check or use the URL below to
+  # check for release in the official NetBox repository.
+  url: null
+  # url: https://api.github.com/repos/netbox-community/netbox/releases
+
+# Maximum execution time for background tasks, in seconds.
+rqDefaultTimeout: 300  # 5 mins
+
+# The name to use for the session cookie.
+sessionCookieName: sessionid
+
+# Time zone (default: UTC)
+timeZone: UTC
+
+# Date/time formatting. See the following link for supported formats:
+# https://docs.djangoproject.com/en/dev/ref/templates/builtins/#date
+dateFormat: 'N j, Y'
+shortDateFormat: 'Y-m-d'

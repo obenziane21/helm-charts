@@ -1,0 +1,81 @@
+{{- $fullName := include "tpx-redis.fullname" . -}}
+{{- $serviceEnvironment := .Values.global.environments.environmentName -}}
+{{- $serviceNamespace := .Values.global.environments.namespace -}}
+{{- $serviceVpc := .Values.global.environments.vpc -}}
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ $serviceNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}
+    helm.sh/chart: {{ $fullName }}
+    app.kubernetes.io/instance: deployment-{{ $fullName }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 10
+  strategy:
+   rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+   type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $fullName }}
+      app.kubernetes.io/instance: deployment-{{ $fullName }}
+      app.gosomecompanygo.com/aws-region: {{ .Values.global.environments.awsRegion }}
+  template:
+    metadata:
+      annotations:
+        sumologic.com/sourceCategory: "{{ $serviceEnvironment }}/{{ $fullName }}/{{ $fullName }}-app"
+        sumologic.com/sourceCategoryPrefix: ""
+        sumologic.com/sourceCategoryReplaceDash: "-"
+      labels:
+        app.kubernetes.io/name: {{ $fullName }}
+        app.kubernetes.io/instance: deployment-{{ $fullName }}
+        app.gosomecompanygo.com/aws-region: {{ .Values.global.environments.awsRegion }}
+        app.gosomecompanygo.com/environment: {{ $serviceEnvironment }}
+        app.gosomecompanygo.com/stackowner: {{ .Values.StackOwner }}
+    spec:
+      serviceAccountName: somecompanyeksservice{{ $serviceVpc }}tpx-worker-app
+      containers:
+        - name: {{ $fullName }}
+          image: k8s.gcr.io/redis:e2e  # or just image: redis
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+          - name: AWS_REGION
+            value: {{ .Values.global.environments.awsRegion }}
+          - name: ENV
+            value: {{ $serviceEnvironment }}
+          - name: ENVIRONMENT
+            value: {{ $serviceEnvironment }}
+          - name: VPC
+            value: {{ $serviceVpc }}
+          - name: TPX_STATS_ADDRESS
+            value: datadog-cluster-agent:5005
+          ports:
+            - name: {{ $fullName }}-port
+              containerPort: {{ .Values.service.port }}
+              protocol: {{ .Values.containers.protocolType }}
+          stdin: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{ tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

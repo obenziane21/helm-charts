@@ -1,0 +1,63 @@
+# Default values for tpx-worker.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+StackOwner: jenkins
+
+replicaCountProd: 8
+replicaCountStaging: 2
+replicaCount: 1
+
+image:
+  repository: xxxxxxx.dkr.ecr.us-east-1.amazonaws.com
+  name: tpx-worker
+  tag: prod
+  pullPolicy: Always
+
+global:
+  environments:
+    # Replace the environmentName with somehtings like: staging, testa, etc..
+    environmentName: staging
+    vpc: staging
+    awsRegion: us-east-1
+    namespace: dynamic
+
+nameOverride: "tpx-worker"
+fullnameOverride: "tpx-worker"
+
+service:
+  enabled: false
+  # TPX is running with somecompany username inside the docker container, we use the ID to run as non-root
+  dockerUserId: 1000
+  domainName: gosomecompanygo.com
+
+containers:
+  protocolType: TCP
+
+ingress:
+  enabled: false
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  requests:
+    cpu: 5m
+    memory: 250Mi
+
+nodeSelector:
+  role: worker
+
+tolerations:
+  - key: "node.kubernetes.io/unreachable"
+    operator: "Exists"
+    effect: "NoExecute"
+    tolerationSeconds: 6000
+  - key: "node.kubernetes.io/not-ready"
+    operator: "Exists"
+    effect: "NoSchedule"
+
+affinity: {}

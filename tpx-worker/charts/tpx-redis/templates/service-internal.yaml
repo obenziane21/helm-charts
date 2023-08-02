@@ -1,0 +1,29 @@
+{{- if .Values.service.enabled -}}
+{{- $fullName := include "tpx-redis.fullname" . -}}
+{{- $servicePaths := .Values.service.paths -}}
+{{- $serviceEnvironment := .Values.global.environments.environmentName -}}
+{{- $serviceNamespace := .Values.global.environments.namespace -}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $fullName }}"
+  namespace: {{ $serviceNamespace }}
+  annotations:
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}
+    helm.sh/chart: {{ $fullName }}
+    app.kubernetes.io/instance: deployment-{{ $fullName }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.gosomecompanygo.com/environment: {{ $serviceEnvironment }}
+spec:
+  type: {{ .Values.ingress.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: "{{ $fullName }}"
+  selector:
+    app.kubernetes.io/name: {{ $fullName }}
+    app.kubernetes.io/instance: deployment-{{ $fullName }}
+{{- end }}

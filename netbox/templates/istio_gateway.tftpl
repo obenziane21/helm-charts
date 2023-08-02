@@ -1,0 +1,27 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: netbox
+  namespace: ${ namespace }
+spec:
+  selector:
+    istio: ingressgateway-private
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "${ host_name }"
+    tls:
+      httpsRedirect: true
+  - hosts:
+    - ${ host_name }
+    port:
+      name: https-443
+      number: 443
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: netbox-tls
